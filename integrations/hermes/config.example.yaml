@@ -1,0 +1,24 @@
+mcp_servers:
+  noesis:
+    command: "/absolute/path/to/noesis/.venv/bin/python"
+    args: ["-m", "noesis.mcp"]
+    env:
+      NOESIS_DB_PATH: "/absolute/path/to/noesis-data/noesis.db"
+    supports_parallel_tool_calls: false
+    sampling:
+      enabled: false
+    elicitation:
+      enabled: false
+    tools:
+      include:
+        - propose_capture
+        - commit_capture
+        - start_review
+        - submit_attempt
+        - resolve_learning_issue
+        - update_learning_state
+        - recall_context
+        - get_progress
+      prompts: false
+      resources: false
+
