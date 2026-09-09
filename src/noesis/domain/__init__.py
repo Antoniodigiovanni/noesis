@@ -1,0 +1,2 @@
+"""Domain vocabulary and invariants."""
+

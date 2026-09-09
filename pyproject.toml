@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "noesis-learning"
+version = "0.1.0"
+description = "Local-first deterministic learning substrate for Hermes Agent"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "alembic==1.19.2",
+  "fsrs==6.3.2",
+  "mcp==2.2.0",
+  "pydantic==2.13.4",
+  "sqlalchemy==2.0.52",
+  "typer==0.21.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.0.2", "pytest-cov==7.0.0"]
+
+[project.scripts]
+noesis = "noesis.cli.app:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/noesis"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
