@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+install_dir=${NOESIS_INSTALL_DIR:-/srv/noesis}
+release_dir="$install_dir/releases/current"
+export NOESIS_DB_PATH="$install_dir/state/noesis.db"
+export XDG_CACHE_HOME="$install_dir/cache"
+export PYTHONDONTWRITEBYTECODE=1
+cd "$release_dir"
+exec .venv/bin/noesis "$@"

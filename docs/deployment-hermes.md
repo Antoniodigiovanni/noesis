@@ -17,16 +17,9 @@ Also inspect the active profile and `~/.hermes/config.yaml`. Do not modify Herme
 
 ## Install Noesis
 
-From a release checkout on the Hermes machine:
+Install a published native release using [`deploy/README.md`](../deploy/README.md). Noesis uses versioned releases under `/srv/noesis`, private persistent SQLite state, and a stable `/srv/noesis/bin/noesis-mcp` launcher. Hermes must spawn that launcher directly because the MCP transport is stdio; do not create a detached Noesis systemd service.
 
-```bash
-uv venv --python 3.12 .venv
-UV_CACHE_DIR=/tmp/noesis-uv-cache uv sync --frozen
-mkdir -p ~/.local/share/noesis
-NOESIS_DB_PATH="$HOME/.local/share/noesis/noesis.db" .venv/bin/noesis init-db
-```
-
-Merge `integrations/hermes/config.example.yaml` into the active Hermes profile configuration after replacing both absolute paths. Sampling, elicitation, resource wrappers, prompt wrappers, and parallel calls must remain disabled.
+Merge `integrations/hermes/config.example.yaml` into the active Hermes profile configuration. Sampling, elicitation, resource wrappers, prompt wrappers, and parallel calls must remain disabled.
 
 Install the skill:
 
@@ -48,5 +41,5 @@ Run it once immediately with `hermes cron run <job-id>` and reply on the continu
 For acceptance step 8 only, a unit can be made due with the guarded fixture below. It refuses to run unless the opt-in variable is present and should never be added to the Hermes MCP environment:
 
 ```bash
-NOESIS_ENABLE_TEST_FIXTURES=1 .venv/bin/noesis test-make-due <knowledge-unit-id>
+NOESIS_ENABLE_TEST_FIXTURES=1 /srv/noesis/bin/noesis-admin test-make-due <knowledge-unit-id>
 ```

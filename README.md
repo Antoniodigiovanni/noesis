@@ -23,7 +23,7 @@ NOESIS_DB_PATH="$PWD/noesis.db" .venv/bin/python -m noesis.mcp
 
 ## Hermes deployment
 
-Development happens in this repository. Install the completed package and run live acceptance testing on the target Hermes machine. See [the deployment guide](docs/deployment-hermes.md) and copy the example in `integrations/hermes/config.example.yaml` into the target profile's `~/.hermes/config.yaml`.
+Development happens in this repository. Install the completed package and run live acceptance testing on the target Hermes machine. See [the Hermes integration guide](docs/deployment-hermes.md), [native release deployment](deploy/README.md), and copy the example in `integrations/hermes/config.example.yaml` into the target profile's `~/.hermes/config.yaml`.
 
 ## Administrative commands
 
