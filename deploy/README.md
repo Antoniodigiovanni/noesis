@@ -32,8 +32,14 @@ operator account merely to simplify deployment.
 
 ## First installation
 
+> **Important:** the installer does not discover, infer, or prompt for the
+> Hermes account. Before running it, identify the account whose home contains
+> the active Hermes profile (normally `~/.hermes/config.yaml`), confirm it with
+> the target operator, and switch to that account. A `.hermes` directory under
+> `/home` is only a clue and must not be treated as authoritative.
+
 First, from the administrative account, create the application root for the
-actual Hermes account (replace both placeholders):
+confirmed Hermes account (replace both placeholders):
 
 ```bash
 HERMES_USER=hermes

@@ -64,6 +64,17 @@ def test_private_state_and_stable_launchers_are_outside_releases() -> None:
     assert 'export HOME=' not in text("deploy/noesis-mcp")
 
 
+def test_installer_announces_that_runtime_account_selection_is_manual() -> None:
+    result = subprocess.run(
+        [str(DEPLOY / "install.sh")], text=True, capture_output=True
+    )
+    assert result.returncode == 2
+    assert result.stderr.startswith(
+        "Noesis must be installed as the account that runs Hermes.\n"
+    )
+    assert "does not discover or select the Hermes account" in result.stderr
+
+
 @pytest.mark.parametrize(
     "script", ["install.sh", "update.sh", "noesis-mcp", "noesis-admin", "install-hermes-skill.sh"]
 )
