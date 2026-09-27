@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import sqlite3
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+from sqlalchemy import create_engine
+
+from noesis.persistence.models import Base
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPLOY = ROOT / "deploy"
@@ -65,8 +70,46 @@ def test_deployment_script_shell_syntax(script: str) -> None:
     subprocess.run(["bash", "-n", str(DEPLOY / script)], check=True)
 
 
-def test_protocol_smoke_script_compiles() -> None:
+def test_protocol_smoke_and_legacy_scripts_compile() -> None:
     subprocess.run(
-        ["python3", "-m", "py_compile", str(DEPLOY / "mcp-smoke.py")],
+        [
+            "python3",
+            "-m",
+            "py_compile",
+            str(DEPLOY / "mcp-smoke.py"),
+            str(DEPLOY / "prepare-legacy.py"),
+        ],
         check=True,
     )
+
+
+def test_prepare_legacy_stamps_only_the_exact_initial_schema(tmp_path) -> None:
+    database = tmp_path / "legacy.db"
+    engine = create_engine(f"sqlite:///{database}")
+    with engine.begin() as connection:
+        Base.metadata.create_all(connection)
+        connection.exec_driver_sql("PRAGMA user_version=1")
+    engine.dispose()
+    subprocess.run(
+        [sys.executable, str(DEPLOY / "prepare-legacy.py"), str(database)],
+        check=True,
+    )
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == ("0001",)
+
+
+def test_prepare_legacy_rejects_a_partial_schema(tmp_path) -> None:
+    database = tmp_path / "partial.db"
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE knowledge_units (id TEXT PRIMARY KEY)")
+        connection.execute("PRAGMA user_version=1")
+    result = subprocess.run(
+        [sys.executable, str(DEPLOY / "prepare-legacy.py"), str(database)],
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode != 0
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT count(*) FROM sqlite_master WHERE name = 'alembic_version'"
+        ).fetchone() == (0,)

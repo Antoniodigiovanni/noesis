@@ -95,7 +95,8 @@ tar -xzf "$archive" -C "$staging/unpacked" --no-same-owner --no-same-permissions
 payload="$staging/unpacked/noesis"
 [[ -f "$payload/pyproject.toml" && -f "$payload/uv.lock" && -f "$payload/alembic.ini" && \
    -f "$payload/migrations/env.py" && -f "$payload/deploy/noesis-mcp" && \
-   -f "$payload/deploy/mcp-smoke.py" && -f "$payload/release.env" ]] || die 'incomplete release archive'
+   -f "$payload/deploy/mcp-smoke.py" && -f "$payload/deploy/prepare-legacy.py" && \
+   -f "$payload/release.env" ]] || die 'incomplete release archive'
 [[ $(manifest_value "$payload/release.env" RELEASE_TAG) == "$tag" ]] || die 'release tag mismatch'
 version=$(python3 - "$payload/pyproject.toml" <<'PY'
 import sys,tomllib
@@ -138,11 +139,13 @@ PY
   chmod 0600 "$backup"
   migration_test="$staging/migration-test.db"
   cp -p "$backup" "$migration_test"
+  "$new_dir/.venv/bin/python" "$new_dir/deploy/prepare-legacy.py" "$migration_test"
   (cd "$new_dir" && NOESIS_DB_PATH="$migration_test" .venv/bin/alembic upgrade head)
 fi
 
 # Database restoration in the EXIT trap makes migration + code switching one recoverable operation.
 migration_started=1
+"$new_dir/.venv/bin/python" "$new_dir/deploy/prepare-legacy.py" "$install_dir/state/noesis.db"
 (cd "$new_dir" && NOESIS_DB_PATH="$install_dir/state/noesis.db" .venv/bin/alembic upgrade head)
 ln -s "$tag" "$install_dir/releases/.next-link"
 mv -Tf "$install_dir/releases/.next-link" "$install_dir/releases/current"
