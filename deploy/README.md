@@ -22,16 +22,29 @@ The default layout is:
   backups/
 ```
 
-Use the same unprivileged account for installation and Hermes. The host needs
-Bash 4+, Python 3, `uv`, `flock`, `curl`, `tar`, `sha256sum`, and `sudo` only to
-create `/srv/noesis`. Mutable directories are mode `0700`; launchers enforce
-`umask 077`. Never run the installer as root.
+Run installation and updates **as the account that runs Hermes**, even when the
+operator uses a different administrative account. The host needs Bash 4+,
+Python 3, `uv`, `flock`, `curl`, `tar`, and `sha256sum`. An administrator uses
+`sudo` only to create `/srv/noesis` with the Hermes account as owner. Mutable
+directories are mode `0700`; launchers enforce `umask 077`. Never run the
+installer or updater as root, and do not make private state readable by the
+operator account merely to simplify deployment.
 
 ## First installation
 
-Download both release assets on the Hermes machine (or transfer them from an
-authenticated workstation), verify the checksum, and extract only to obtain the
-bootstrap installer:
+First, from the administrative account, create the application root for the
+actual Hermes account (replace both placeholders):
+
+```bash
+HERMES_USER=hermes
+HERMES_GROUP=hermes
+sudo install -d -m 0755 -o "$HERMES_USER" -g "$HERMES_GROUP" /srv/noesis
+sudo -iu "$HERMES_USER"
+```
+
+In that Hermes-account shell, download both release assets (or transfer them to
+a location readable by this account), verify the checksum, and extract only to
+obtain the bootstrap installer:
 
 ```bash
 release=vX.Y.Z
@@ -41,7 +54,13 @@ curl -fLO "$base/noesis-$release-native.tar.gz.sha256"
 sha256sum -c "noesis-$release-native.tar.gz.sha256"
 mkdir bootstrap && tar -xzf "noesis-$release-native.tar.gz" -C bootstrap
 bootstrap/noesis/deploy/install.sh "$PWD/noesis-$release-native.tar.gz"
+/srv/noesis/deploy/install-hermes-skill.sh
 ```
+
+The skill installer copies the audited bundled skill into the current account's
+`~/.hermes/skills/productivity/noesis/SKILL.md`; it never writes another user's
+home. Rerun it after each Noesis update, then inspect the diff if the local skill
+was customized.
 
 The updater independently verifies the checksum and rejects archives containing
 absolute paths, traversal, links, devices, duplicate members, or an unexpected
@@ -76,12 +95,14 @@ Verify exactly eight tools before using production data.
 ## Updating and rolling back
 
 A running stdio child keeps a shared runtime lock. Before updating, reload or
-stop Noesis in Hermes so no MCP child remains, then run:
+stop Noesis in Hermes so no MCP child remains. Run the updater as the Hermes
+account (`sudo -iu <hermes-user>` from an administrative shell), then run:
 
 ```bash
 /srv/noesis/deploy/update.sh vX.Y.Z
 # For a private repository, transfer both files and pass the archive path:
 /srv/noesis/deploy/update.sh /path/to/noesis-vX.Y.Z-native.tar.gz
+/srv/noesis/deploy/install-hermes-skill.sh
 ```
 
 The updater refuses to migrate while a child is active. It creates a consistent

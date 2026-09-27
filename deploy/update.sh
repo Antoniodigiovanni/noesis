@@ -96,7 +96,7 @@ payload="$staging/unpacked/noesis"
 [[ -f "$payload/pyproject.toml" && -f "$payload/uv.lock" && -f "$payload/alembic.ini" && \
    -f "$payload/migrations/env.py" && -f "$payload/deploy/noesis-mcp" && \
    -f "$payload/deploy/mcp-smoke.py" && -f "$payload/deploy/prepare-legacy.py" && \
-   -f "$payload/release.env" ]] || die 'incomplete release archive'
+   -f "$payload/deploy/install-hermes-skill.sh" && -f "$payload/release.env" ]] || die 'incomplete release archive'
 [[ $(manifest_value "$payload/release.env" RELEASE_TAG) == "$tag" ]] || die 'release tag mismatch'
 version=$(python3 - "$payload/pyproject.toml" <<'PY'
 import sys,tomllib
@@ -158,8 +158,10 @@ for launcher in noesis-mcp noesis-admin; do
   install -m 0755 "$new_dir/deploy/$launcher" "$install_dir/bin/$launcher.next"
   mv -f "$install_dir/bin/$launcher.next" "$install_dir/bin/$launcher"
 done
-install -m 0755 "$new_dir/deploy/update.sh" "$install_dir/deploy/update.sh.next"
-mv -f "$install_dir/deploy/update.sh.next" "$install_dir/deploy/update.sh"
+for script in update.sh install-hermes-skill.sh; do
+  install -m 0755 "$new_dir/deploy/$script" "$install_dir/deploy/$script.next"
+  mv -f "$install_dir/deploy/$script.next" "$install_dir/deploy/$script"
+done
 printf '%s\n' "$tag" > "$install_dir/state/current-release"
 switched=
 printf 'Updated Noesis to %s. Reload Hermes MCP and run: hermes mcp test noesis\n' "$tag"

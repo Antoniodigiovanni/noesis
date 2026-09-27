@@ -19,13 +19,14 @@ Also inspect the active profile and `~/.hermes/config.yaml`. Do not modify Herme
 
 Install a published native release using [`deploy/README.md`](../deploy/README.md). Noesis uses versioned releases under `/srv/noesis`, private persistent SQLite state, and a stable `/srv/noesis/bin/noesis-mcp` launcher. Hermes must spawn that launcher directly because the MCP transport is stdio; do not create a detached Noesis systemd service.
 
+When the administrative login and Hermes runtime account differ, create `/srv/noesis` as an administrator but run the installer, updater, administrative commands, and skill installer through a login shell for the Hermes account (`sudo -iu <hermes-user>`). This preserves its real `HOME` and keeps both SQLite state and `~/.hermes` ownership correct.
+
 Merge `integrations/hermes/config.example.yaml` into the active Hermes profile configuration. Sampling, elicitation, resource wrappers, prompt wrappers, and parallel calls must remain disabled.
 
-Install the skill:
+Install the bundled audited skill as the Hermes account:
 
 ```bash
-mkdir -p ~/.hermes/skills/productivity/noesis
-cp integrations/hermes/SKILL.md ~/.hermes/skills/productivity/noesis/SKILL.md
+/srv/noesis/deploy/install-hermes-skill.sh
 hermes skills list
 hermes mcp test noesis
 ```

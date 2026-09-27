@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import subprocess
 import sys
@@ -64,10 +65,30 @@ def test_private_state_and_stable_launchers_are_outside_releases() -> None:
 
 
 @pytest.mark.parametrize(
-    "script", ["install.sh", "update.sh", "noesis-mcp", "noesis-admin"]
+    "script", ["install.sh", "update.sh", "noesis-mcp", "noesis-admin", "install-hermes-skill.sh"]
 )
 def test_deployment_script_shell_syntax(script: str) -> None:
     subprocess.run(["bash", "-n", str(DEPLOY / script)], check=True)
+
+
+def test_skill_installer_targets_the_runtime_accounts_home(tmp_path) -> None:
+    install_dir = tmp_path / "install"
+    source = install_dir / "releases" / "current" / "integrations" / "hermes"
+    source.mkdir(parents=True)
+    (source / "SKILL.md").write_text("# Audited Noesis skill\n", encoding="utf-8")
+    home = tmp_path / "hermes-home"
+    home.mkdir()
+    subprocess.run(
+        [str(DEPLOY / "install-hermes-skill.sh")],
+        env={
+            "HOME": str(home),
+            "NOESIS_INSTALL_DIR": str(install_dir),
+            "PATH": os.environ["PATH"],
+        },
+        check=True,
+    )
+    installed = home / ".hermes" / "skills" / "productivity" / "noesis" / "SKILL.md"
+    assert installed.read_text(encoding="utf-8") == "# Audited Noesis skill\n"
 
 
 def test_protocol_smoke_and_legacy_scripts_compile() -> None:
