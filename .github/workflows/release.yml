@@ -1,0 +1,63 @@
+name: Publish native release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen pytest
+      - name: Check tag and package version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          with open("pyproject.toml", "rb") as handle:
+              version = tomllib.load(handle)["project"]["version"]
+          if os.environ["RELEASE_TAG"] != f"v{version}":
+              raise SystemExit("release tag does not match project version")
+          PY
+
+  publish:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create native application archive
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p bundle/noesis
+          git archive HEAD src migrations deploy integrations docs alembic.ini pyproject.toml uv.lock README.md | \
+            tar -xf - -C bundle/noesis
+          {
+            printf 'RELEASE_TAG=%s\n' "$RELEASE_TAG"
+            printf 'RELEASE_COMMIT=%s\n' "$RELEASE_COMMIT"
+            printf 'UV_LOCK_SHA256=%s\n' "$(sha256sum uv.lock | awk '{print $1}')"
+          } > bundle/noesis/release.env
+          tar -czf "noesis-${RELEASE_TAG}-native.tar.gz" -C bundle noesis
+          sha256sum "noesis-${RELEASE_TAG}-native.tar.gz" > \
+            "noesis-${RELEASE_TAG}-native.tar.gz.sha256"
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "noesis-${RELEASE_TAG}-native.tar.gz" \
+            "noesis-${RELEASE_TAG}-native.tar.gz.sha256" \
+            --verify-tag --generate-notes
