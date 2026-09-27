@@ -104,6 +104,21 @@ class ReviewService:
             raise ValidationFailure("idempotency_key must not be empty")
         correlation_id = correlation_id or str(uuid4())
         request = {"review_session_id": review_session_id, "exact_response": exact_response, "assessment": assessment.model_dump(mode="json"), "hints_used": hints_used or [], "latency_ms": latency_ms}
+        expired = False
+        with self.db.transaction() as dbs:
+            cached = get_idempotent(dbs, "submit_attempt", idempotency_key, request)
+            if cached is not None:
+                return cached
+            review = dbs.get(ReviewSession, review_session_id)
+            if review is None:
+                raise NotFound("review session not found")
+            if review.status in OPEN_SESSION_STATES and as_utc(review.expires_at) < now_utc():
+                review.status = "expired"
+                review.updated_at = now_utc()
+                add_event(dbs, aggregate_type="review_session", aggregate_id=review.id, event_type="review.expired", actor="noesis", correlation_id=correlation_id, payload={})
+                expired = True
+        if expired:
+            raise Conflict("review session is expired, not awaiting_answer")
         with self.db.transaction() as dbs:
             cached = get_idempotent(dbs, "submit_attempt", idempotency_key, request)
             if cached is not None:
