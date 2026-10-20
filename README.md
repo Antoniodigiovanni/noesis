@@ -4,6 +4,14 @@ Noesis is a local-first deterministic learning substrate for Hermes Agent. Herme
 
 Noesis contains no model provider integration and requires no model credential.
 
+## Status
+
+**Experimental — development in progress; not ready to deploy.** This is an
+evolving prototype. The [acceptance report](docs/acceptance-report.md) records
+17 local tests passing and release artifacts building on 2026-09-09; the live
+Hermes acceptance workflow is explicitly not run. Do not treat Noesis as
+production-ready or rely on it as your sole durable learning record.
+
 ## Local development
 
 Requires Python 3.12 or 3.13, `uv`, and SQLite with FTS5.
