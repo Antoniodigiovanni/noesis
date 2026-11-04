@@ -46,7 +46,8 @@ class LearningService:
                 session.add(AssessmentStatusEvent(assessment_id=assessment.id, status="disputed", reason="User disputed grading", actor=actor))
                 attempt = session.get(Attempt, assessment.attempt_id)
                 review = session.get(ReviewSession, attempt.review_session_id)
-                review.status = "awaiting_resolution"
+                if self._is_current_attempt(review, attempt):
+                    review.status = "awaiting_resolution"
                 self._rebuild(session, review.learner_id, attempt.knowledge_unit_id)
                 response = {"assessment_id": assessment.id, "status": "disputed", "review_status": review.status}
             elif action in ("replace_assessment", "accept_self_grade"):
@@ -70,9 +71,12 @@ class LearningService:
                 grade = OUTCOME_GRADES[replacement.recall_outcome]
                 session.add(SchedulerTransition(learner_id=review.learner_id, knowledge_unit_id=unit.id, assessment_id=new.id, grade=grade, desired_retention=unit.desired_retention, scheduler_version=self.scheduler.version, input_state={}, output_state={}, reviewed_at=attempt.created_at, next_due_at=attempt.created_at, active=True, explanation={"resolution": action}))
                 memory = self._rebuild(session, review.learner_id, unit.id)
-                review.current_position += 1
-                review.current_exercise_instance_id = None
-                review.status = "complete" if review.current_position >= len(review.selected_unit_ids) else "awaiting_question"
+                if grade == 1 and unit.lifecycle_status == "maintenance":
+                    unit.lifecycle_status = "active"
+                if self._is_current_attempt(review, attempt):
+                    review.current_position += 1
+                    review.current_exercise_instance_id = None
+                    review.status = "complete" if review.current_position >= len(review.selected_unit_ids) else "awaiting_question"
                 response = {"original_assessment_id": original.id, "assessment_id": new.id, "status": "accepted", "review_status": review.status, "next_due_at": memory.next_due_at.isoformat() if memory else None}
             elif action in ("invalidate_attempt", "ambiguous_question", "factually_wrong_question"):
                 attempt = self._attempt(session, attempt_id)
@@ -82,8 +86,7 @@ class LearningService:
                 if action != "invalidate_attempt":
                     session.get(ExerciseInstance, attempt.exercise_instance_id).validity_status = "invalid"
                 review = session.get(ReviewSession, attempt.review_session_id)
-                review.current_exercise_instance_id = None
-                review.status = "awaiting_question"
+                self._queue_retry(review, attempt)
                 self._rebuild(session, review.learner_id, attempt.knowledge_unit_id)
                 response = {"attempt_id": attempt.id, "validity_status": "invalid", "review_status": review.status}
             elif action == "correct_knowledge_unit":
@@ -93,6 +96,8 @@ class LearningService:
                 unit = session.get(KnowledgeUnit, attempt.knowledge_unit_id)
                 previous = session.scalar(select(KnowledgeUnitRevision).where(KnowledgeUnitRevision.knowledge_unit_id == unit.id, KnowledgeUnitRevision.revision == unit.current_revision))
                 unit.current_revision += 1
+                unit.version += 1
+                unit.updated_at = now_utc()
                 unit.lifecycle_status = "active"
                 revision = KnowledgeUnitRevision(knowledge_unit_id=unit.id, revision=unit.current_revision, canonical_statement=corrected_statement.strip(), provenance_kind=previous.provenance_kind, uncertainty=previous.uncertainty, actor=actor)
                 session.add(revision); session.flush()
@@ -101,9 +106,8 @@ class LearningService:
                 session.add(ExerciseSpecification(knowledge_unit_revision_id=revision.id, exercise_type=exercise.exercise_type, required_elements=exercise.required_elements, acceptable_alternatives=exercise.acceptable_alternatives, common_errors=exercise.common_errors, difficulty_target=exercise.difficulty_target))
                 index_document(session, "knowledge_unit", unit.id, unit.learner_id, "", revision.canonical_statement, revision.provenance_kind)
                 review = session.get(ReviewSession, attempt.review_session_id)
-                review.current_exercise_instance_id = None
-                review.status = "awaiting_question"
-                response = {"knowledge_unit_id": unit.id, "revision": unit.current_revision, "lifecycle_status": unit.lifecycle_status, "review_status": review.status}
+                self._queue_retry(review, attempt)
+                response = {"knowledge_unit_id": unit.id, "revision": unit.current_revision, "version": unit.version, "lifecycle_status": unit.lifecycle_status, "review_status": review.status}
             else:
                 raise ValidationFailure("unsupported resolution action")
             aggregate_id = assessment_id or attempt_id or response.get("knowledge_unit_id")
@@ -183,6 +187,25 @@ class LearningService:
 
     def _rebuild(self, session, learner_id, unit_id):
         return rebuild_memory_state(session, learner_id, unit_id, self.scheduler)
+
+    @staticmethod
+    def _is_current_attempt(review, attempt) -> bool:
+        return (
+            review.current_position < len(review.selected_unit_ids)
+            and review.selected_unit_ids[review.current_position] == attempt.knowledge_unit_id
+            and review.current_exercise_instance_id == attempt.exercise_instance_id
+        )
+
+    @classmethod
+    def _queue_retry(cls, review, attempt) -> None:
+        if cls._is_current_attempt(review, attempt):
+            review.current_exercise_instance_id = None
+            review.status = "awaiting_question"
+            return
+        if attempt.knowledge_unit_id not in review.selected_unit_ids[review.current_position:]:
+            review.selected_unit_ids = [*review.selected_unit_ids, attempt.knowledge_unit_id]
+        if review.status == "complete":
+            review.status = "awaiting_question"
 
     @staticmethod
     def _assessment_status(session, assessment_id):
