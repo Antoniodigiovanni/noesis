@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+install_dir=${NOESIS_INSTALL_DIR:-/srv/noesis}
+state_dir="$install_dir/state"
+release_dir="$install_dir/releases/current"
+
+[[ -d "$state_dir" ]] || { printf 'Noesis state directory is missing: %s\n' "$state_dir" >&2; exit 1; }
+[[ -x "$release_dir/.venv/bin/python" ]] || { printf 'Noesis current release is not installed\n' >&2; exit 1; }
+
+export NOESIS_DB_PATH="$state_dir/noesis.db"
+export XDG_CACHE_HOME="$install_dir/cache"
+export PYTHONDONTWRITEBYTECODE=1
+
+# Updates take this lock exclusively. The descriptor remains open after exec,
+# preventing a migration while Hermes has any Noesis stdio child running.
+exec 9<"$state_dir/runtime.lock"
+flock -s 9
+cd "$release_dir"
+exec .venv/bin/python -m noesis.mcp

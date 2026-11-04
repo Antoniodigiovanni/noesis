@@ -1,9 +1,7 @@
 mcp_servers:
   noesis:
-    command: "/absolute/path/to/noesis/.venv/bin/python"
-    args: ["-m", "noesis.mcp"]
-    env:
-      NOESIS_DB_PATH: "/absolute/path/to/noesis-data/noesis.db"
+    command: "/srv/noesis/bin/noesis-mcp"
+    args: []
     supports_parallel_tool_calls: false
     sampling:
       enabled: false
