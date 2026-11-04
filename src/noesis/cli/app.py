@@ -13,7 +13,7 @@ from noesis import __version__
 from noesis.application.service import Noesis
 from noesis.persistence.database import default_database_path
 from noesis.application.common import add_event
-from noesis.persistence.models import Assessment, CaptureProposal, KnowledgeUnit, MemoryState, RebuildFailure, ReviewSession
+from noesis.persistence.models import Assessment, AssessmentStatusEvent, CaptureProposal, KnowledgeUnit, MemoryState, RebuildFailure, ReviewSession
 from noesis.scheduler.fsrs_adapter import FsrsAdapter
 
 
@@ -39,7 +39,18 @@ def diagnose(database: Path | None = None):
             "database_health": integrity, "sqlite_version": sqlite3.sqlite_version,
             "lifecycle_counts": lifecycle,
             "pending_captures": session.scalar(select(func.count(CaptureProposal.id)).where(CaptureProposal.status == "pending")) or 0,
-            "pending_disputes": session.scalar(select(func.count(Assessment.id)).where(Assessment.status.in_(("proposed", "disputed")))) or 0,
+            "pending_disputes": session.scalar(
+                select(func.count(Assessment.id)).where(
+                    func.coalesce(
+                        select(AssessmentStatusEvent.status)
+                        .where(AssessmentStatusEvent.assessment_id == Assessment.id)
+                        .order_by(AssessmentStatusEvent.created_at.desc(), AssessmentStatusEvent.id.desc())
+                        .limit(1)
+                        .scalar_subquery(),
+                        Assessment.status,
+                    ).in_(("proposed", "disputed"))
+                )
+            ) or 0,
             "open_review_sessions": session.scalar(select(func.count(ReviewSession.id)).where(ReviewSession.status.in_(("created", "awaiting_question", "awaiting_answer", "awaiting_resolution")))) or 0,
             "failed_scheduler_rebuilds": session.scalar(select(func.count(RebuildFailure.id)).where(RebuildFailure.resolved.is_(False))) or 0,
             "mcp_startup_status": "schema initialized; use `hermes mcp test noesis` for protocol health",
@@ -56,7 +67,18 @@ def export_data(output: Path, database: Path | None = None):
             if table.startswith("sqlite_"): continue
             rows = connection.exec_driver_sql(f'SELECT * FROM "{table}"').mappings().all()
             export["tables"][table] = [dict(row) for row in rows]
-    output.write_text(json.dumps(export, indent=2, default=str), encoding="utf-8")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(output, flags, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = -1
+            json.dump(export, handle, indent=2, default=str)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
     typer.echo(str(output))
 
 
