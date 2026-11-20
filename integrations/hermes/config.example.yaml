@@ -19,6 +19,5 @@ mcp_servers:
         - update_learning_state
         - recall_context
         - get_progress
-      prompts: false
       resources: false
-
+      prompts: false

@@ -486,6 +486,10 @@ name = "noesis-learning"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx2" },
+    { name = "psycopg", marker = "sys_platform == 'linux'" },
+    { name = "starlette" },
+    { name = "uvicorn" },
     { name = "alembic" },
     { name = "fsrs" },
     { name = "mcp" },
@@ -502,6 +506,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx2", specifier = "==2.12.0" },
+    { name = "psycopg", marker = "sys_platform == 'linux'", specifier = "==3.3.4" },
+    { name = "starlette", specifier = "==1.6.0" },
+    { name = "uvicorn", specifier = "==0.52.4" },
     { name = "alembic", specifier = "==1.19.2" },
     { name = "fsrs", specifier = "==6.3.2" },
     { name = "mcp", specifier = "==2.2.0" },
@@ -970,4 +978,16 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f2/0f/3f86e61397dd33bf2ccf28188c40db6a740658aeebbbf6e7dbc101a1f487/uvicorn-0.52.4.tar.gz", hash = "sha256:73acfee47a0b133c5de13d219492d62d8a31e935f4fe6e41a232451a15379f86", size = 100627, upload-time = "2026-08-19T06:27:41.821Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/79/4a20b54ab0491485ccd8c077db2d39187c7f12b3e15485d38a7be37c81b4/uvicorn-0.52.4-py3-none-any.whl", hash = "sha256:f86e41a149d7d05a9969337e3946a9c171c06a5d42680896daaba624aeac8da1", size = 79871, upload-time = "2026-08-19T06:27:40.36Z" },
+]
+
+[[package]]
+name = "psycopg"
+version = "3.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/db/2f/cb91e5502ec9de1de6f1b76cfbf69531932725361168bb06963620c77e2e/psycopg-3.3.4.tar.gz", hash = "sha256:e21207764952cff81b6b8bdacad9a3939f2793367fdac2987b3aac36a651b5bc", size = 165799, upload-time = "2026-05-01T23:31:55.179Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/e0/7b3dee031daae7743609ce3c746565d4a3ed7c2c186479eb48e34e838c64/psycopg-3.3.4-py3-none-any.whl", hash = "sha256:b6bbc25ccf05c8fad3b061d9db2ef0909a555171b84b07f29458a447253d679a", size = 213001, upload-time = "2026-05-01T23:20:50.816Z" },
 ]

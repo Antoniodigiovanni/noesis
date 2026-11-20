@@ -1,0 +1,29 @@
+[Unit]
+Description=Noesis authenticated learning web application
+After=network.target
+
+[Service]
+Type=simple
+User=noesis
+Group=noesis
+WorkingDirectory=/opt/noesis/current
+EnvironmentFile=/etc/noesis/noesis.env
+ExecStart=/opt/noesis/current/.venv/bin/python -m noesis.web.app
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/noesis
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

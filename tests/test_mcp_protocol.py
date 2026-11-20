@@ -13,7 +13,7 @@ async def with_client(db_path, operation):
         command=sys.executable,
         args=["-m", "noesis.mcp"],
         cwd=os.getcwd(),
-        env={"NOESIS_DB_PATH": str(db_path), "PATH": os.environ.get("PATH", "")},
+        env={"NOESIS_DB_PATH": str(db_path), "PATH": os.environ.get("PATH", ""), **({"NOESIS_SANDBOX_TEST":"1", "PYTHONPATH": os.path.abspath("tests/sandbox")} if os.environ.get("NOESIS_SANDBOX_TEST") == "1" else {})},
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:

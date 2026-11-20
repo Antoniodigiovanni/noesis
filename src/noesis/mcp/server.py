@@ -14,7 +14,7 @@ from noesis.domain.errors import NoesisError
 
 
 core = Noesis()
-server = MCPServer(name="noesis", description="Deterministic local-first learning record", version="0.1.0")
+server = MCPServer(name="noesis", description="Local-first Anki-style learning system with durable reviews and FSRS scheduling", version="0.1.0")
 logger = logging.getLogger("noesis.mcp")
 
 

@@ -13,4 +13,4 @@ def test_initial_alembic_migration(tmp_path):
         tables = set(inspect(connection).get_table_names())
         assert {"sources", "knowledge_units", "attempts", "events", "alembic_version"} <= tables
         assert connection.execute(text("PRAGMA user_version")).scalar() == 1
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0001"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0002"

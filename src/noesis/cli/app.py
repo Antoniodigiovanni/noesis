@@ -30,8 +30,9 @@ def init_db(database: Path | None = None):
 def diagnose(database: Path | None = None):
     core = Noesis(database)
     with core.db.read() as session:
-        integrity = session.execute(text("PRAGMA integrity_check")).scalar()
-        schema = session.execute(text("PRAGMA user_version")).scalar()
+        sqlite = core.db.engine.dialect.name == "sqlite"
+        integrity = session.execute(text("PRAGMA integrity_check" if sqlite else "SELECT 1")).scalar()
+        schema = session.execute(text("PRAGMA user_version" if sqlite else "SELECT version_num FROM alembic_version")).scalar()
         lifecycle = dict(session.execute(select(KnowledgeUnit.lifecycle_status, func.count()).group_by(KnowledgeUnit.lifecycle_status)).all())
         report = {
             "noesis_version": __version__, "schema_version": schema,
@@ -53,10 +54,11 @@ def export_data(output: Path, database: Path | None = None):
     export = {"format": "noesis-export-v1", "noesis_version": __version__, "tables": {}}
     with core.db.engine.connect() as connection:
         for table in core.db.engine.dialect.get_table_names(connection):
-            if table.startswith("sqlite_"): continue
+            if table.startswith(("sqlite_", "app_")): continue  # use authenticated /api/export for app data
             rows = connection.exec_driver_sql(f'SELECT * FROM "{table}"').mappings().all()
             export["tables"][table] = [dict(row) for row in rows]
-    output.write_text(json.dumps(export, indent=2, default=str), encoding="utf-8")
+    with os.fdopen(os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(export, indent=2, default=str))
     typer.echo(str(output))
 
 
@@ -64,6 +66,8 @@ def export_data(output: Path, database: Path | None = None):
 def delete_all(confirm: str = typer.Option(..., help="Type DELETE-NOESIS to confirm"), database: Path | None = None):
     if confirm != "DELETE-NOESIS":
         raise typer.BadParameter("confirmation must exactly equal DELETE-NOESIS")
+    if os.environ.get("NOESIS_DATABASE_URL") and database is None:
+        raise typer.BadParameter("delete-all is legacy SQLite only; explicit database path required")
     path = (database or default_database_path()).expanduser().resolve()
     deleted = []
     for target in (path, Path(f"{path}-wal"), Path(f"{path}-shm")):

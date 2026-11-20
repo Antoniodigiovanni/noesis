@@ -1,44 +1,51 @@
 # Live Hermes acceptance report
 
-Status: **not run** — Hermes is not installed on the development workstation. This report must be completed on the deployment machine; mocked results must not be recorded as live evidence.
+Status: **partial** — live Hermes MCP connection/discovery was verified in an isolated scratch profile, but the end-to-end conversational acceptance workflow has not been run against the user's active profile. Do not treat tool discovery alone as production acceptance.
 
-Local inspection on 2026-09-09:
+## Environment checks completed
 
-- `command -v hermes`, `command -v hermes-agent`, and `command -v hermes-cli` returned no installation.
-- System Python: `3.14.6`; Noesis environment: CPython `3.12.13` created by `uv 0.11.3`.
-- SQLite FTS5 is available.
-- Official Hermes source inspected at commit `b1f003e18633298d549668b8e186af84cca45b76`, version `0.21.1`, dated 2026-09-08.
-- Relevant current source was inspected under `website/docs/reference/mcp-config-reference.md`, `website/docs/developer-guide/creating-skills.md`, `website/docs/user-guide/features/cron.md`, and `cron/scheduler_delivery.py`.
+- Hermes executable: `/home/hermes/.local/bin/hermes`
+- Hermes version: `0.21.4` (`2026.9.21`, upstream commit `32eeacdf`), verified with `hermes --version`.
+- `hermes mcp test noesis` passed using an isolated `HERMES_HOME` scratch profile: stdio connected and Hermes discovered exactly eight tools. The user's active/default profile was not changed.
+- `uv sync --frozen --extra dev` succeeded in the repository and created a Python 3.12.14 virtual environment.
+- Automated command: `.venv/bin/python -m pytest -o 'addopts=' -q`.
+- Current result after the continuation fixes: **30 passed**, with two Typer/Click deprecation warnings. The earlier 17- and 27-test counts are historical.
+- `uv lock --check` passed. A fresh offline build produced exactly one wheel and one source distribution under the scratch directory.
+- Post-fix disposable Chromium acceptance passed at desktop and mobile widths: login, hidden/revealed answer, persisted grade, restart/resume, and 390px overflow check. No screenshot-based visual or full accessibility audit is claimed.
+- An isolated Hermes profile connected to the local authenticated Streamable HTTP endpoint and discovered exactly eight tools. A fresh synthetic fixture proposal remained inactive, was approved only through the separate Noesis service lane, and was returned by MCP recall. No real personal-memory workflow or private-proxy acceptance is claimed.
+- PostgreSQL DDL compiled, but PostgreSQL runtime/restore remains unverified; the project venv has no psycopg and PyPI DNS failed during implementation. No production host/profile/data was changed.
+- Noesis package version is `0.1.0`; the standalone web schema is migration `0002` (separate from the retained legacy schema); FSRS is pinned to `6.3.2`.
+- SQLite FTS5 is available in the installed environment; the MCP subprocess/restart tests use a disposable database.
 
-Local automated status: `17 passed` with a real stdio MCP subprocess/restart test. Alembic reports `No new upgrade operations detected`. Release wheel and source distribution build successfully. These are not substitutes for the live Hermes test.
+## Required live workflow evidence
 
-## Environment
-
-- Hermes path:
-- Hermes version:
-- Hermes commit/build:
-- Python path/version:
-- Noesis version:
-- Commands used:
-
-## Required workflow evidence
-
-- [ ] Fresh Hermes conversation discovers exactly eight Noesis tools.
-- [ ] *Meditations* notes produce narrow proposed units.
-- [ ] User uncertainty remains distinct from source claims; no passage reference is invented.
-- [ ] At least two units approved and one edited or rejected.
-- [ ] Database provenance and audit events inspected.
-- [ ] A test-only fixture makes one unit due.
-- [ ] Durable review session created and one partial/difficult answer submitted.
-- [ ] Noesis calculates the scheduler transition.
-- [ ] Grade dispute preserves the original assessment and is resolved append-only.
-- [ ] Ambiguous question invalidates evidence and rebuilds scheduler state without deletion.
-- [ ] Importance changes while memory strength remains byte-for-byte unchanged.
-- [ ] Suspension and resumption pass.
-- [ ] Noesis process restarted and unfinished review resumed.
-- [ ] Ordinary conversation recalls relevant learned material with provenance.
+- [ ] Add Noesis MCP to the intended Hermes profile with sequential calls, sampling disabled, elicitation disabled, and only eight allowlisted tools.
+- [ ] Start a fresh Hermes conversation and confirm exactly eight Noesis tools are discovered.
+- [ ] Explicitly request capture; verify narrow proposed units and preserved user/source uncertainty.
+- [ ] Approve at least two units and edit or reject another; inspect provenance and event records.
+- [ ] Make a unit due using only a disposable acceptance database.
+- [ ] Start a review; verify the question is shown before the answer and the session is durable.
+- [ ] Submit a partial/difficult answer; verify Noesis calculates FSRS state.
+- [ ] Dispute a grade; verify original assessment remains and resolution is append-only.
+- [ ] Mark an ambiguous question and verify it can be invalidated without deleting history.
+- [ ] Change importance; verify memory strength is unchanged.
+- [ ] Suspend/resume a unit.
+- [ ] Restart Noesis and resume an unfinished review.
+- [ ] Recall learned context in ordinary Hermes work with provenance intact.
+- [ ] Back up/export test data and verify destructive deletion only on a disposable database.
 
 ## Optional paths
 
-- Obsidian: not run; record availability or exact blocker.
-- OCR/vision: not run; record availability or exact blocker.
+- Obsidian: not run; use an identified disposable note and record availability/blocker.
+- OCR/vision: not run; use a fixture or disposable image and record availability/blocker.
+
+## Operator note
+
+A diagnostic run without `NOESIS_DB_PATH` initialized or opened the default database at `/home/hermes/.local/share/noesis/noesis.db`. It was not deleted or modified further. Use an explicit disposable path for future acceptance testing and inspect this default database before relying on it.
+
+## Standalone web-product implementation update (2026-10-26)
+
+The historical Hermes discovery result above remains historical; it was not rerun
+against an active profile. New local evidence, test commands, transport coverage,
+packaging checks and explicit sandbox blockers are recorded in
+[implementation-report.md](implementation-report.md). Synthetic fixture MCP proposal→approval→recall passed; the configured hostname returns the Cloudflare Access login redirect and local Caddy denies origin requests without a JWT. No authenticated Access browser session, real personal-memory workflow or production deployment is claimed.

@@ -27,11 +27,18 @@ class QueryService:
         if not match:
             return {"query": query, "results": []}
         with self.db.read() as session:
-            rows = session.connection().exec_driver_sql(
-                "SELECT entity_type, entity_id, title, body, provenance, bm25(learning_fts) AS score "
-                "FROM learning_fts WHERE learning_fts MATCH ? AND learner_id = ? ORDER BY score LIMIT ?",
-                (match, learner_id, max(1, min(limit, 50))),
-            ).mappings().all()
+            if self.db.engine.dialect.name == 'sqlite':
+                rows = session.connection().exec_driver_sql(
+                    "SELECT entity_type, entity_id, title, body, provenance, bm25(learning_fts) AS score "
+                    "FROM learning_fts WHERE learning_fts MATCH ? AND learner_id = ? ORDER BY score LIMIT ?",
+                    (match, learner_id, max(1, min(limit, 50))),
+                ).mappings().all()
+            else:
+                # Portable lexical fallback. PostgreSQL trigram/vector ranking is deferred.
+                tokens = re.findall(r"[\w]+", query)[:20]
+                from sqlalchemy import or_
+                units = session.scalars(select(KnowledgeUnit).join(KnowledgeUnitRevision, (KnowledgeUnitRevision.knowledge_unit_id == KnowledgeUnit.id) & (KnowledgeUnitRevision.revision == KnowledgeUnit.current_revision)).where(KnowledgeUnit.learner_id == learner_id, or_(*[KnowledgeUnitRevision.canonical_statement.ilike('%'+t+'%') for t in tokens])).limit(max(1,min(limit,50))))
+                rows = [{'entity_type':'knowledge_unit','entity_id':u.id,'score':None} for u in units]
             results = []
             for row in rows:
                 if row["entity_type"] == "knowledge_unit":

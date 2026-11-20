@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 
 
 def index_document(session: Session, entity_type: str, entity_id: str, learner_id: str, title: str, body: str, provenance: str) -> None:
+    if session.bind.dialect.name != "sqlite":
+        return  # PostgreSQL retrieval reads normalized rows; no SQLite FTS writes.
     session.connection().exec_driver_sql(
         "DELETE FROM learning_fts WHERE entity_type = ? AND entity_id = ?",
         (entity_type, entity_id),

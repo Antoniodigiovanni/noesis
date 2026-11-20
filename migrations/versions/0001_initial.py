@@ -10,12 +10,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    Base.metadata.create_all(op.get_bind())
-    op.execute("CREATE VIRTUAL TABLE IF NOT EXISTS learning_fts USING fts5(entity_type UNINDEXED, entity_id UNINDEXED, learner_id UNINDEXED, title, body, provenance)")
-    op.execute("PRAGMA user_version=1")
+    Base.metadata.create_all(op.get_bind(), tables=[t for t in Base.metadata.sorted_tables if not t.name.startswith("app_")])
+    if op.get_bind().dialect.name == "sqlite":
+        op.execute("CREATE VIRTUAL TABLE IF NOT EXISTS learning_fts USING fts5(entity_type UNINDEXED, entity_id UNINDEXED, learner_id UNINDEXED, title, body, provenance)")
+        op.execute("PRAGMA user_version=1")
 
 
 def downgrade() -> None:
-    op.execute("DROP TABLE IF EXISTS learning_fts")
-    Base.metadata.drop_all(op.get_bind())
-    op.execute("PRAGMA user_version=0")
+    if op.get_bind().dialect.name == "sqlite":
+        op.execute("DROP TABLE IF EXISTS learning_fts")
+    Base.metadata.drop_all(op.get_bind(), tables=[t for t in reversed(Base.metadata.sorted_tables) if not t.name.startswith("app_")])
+    if op.get_bind().dialect.name == "sqlite":
+        op.execute("PRAGMA user_version=0")

@@ -20,6 +20,13 @@ def default_database_path() -> Path:
 
 
 def create_database_engine(path: str | Path | None = None) -> Engine:
+    url = str(path) if path and "://" in str(path) else os.environ.get("NOESIS_DATABASE_URL") if path is None else None
+    if url:
+        if not url.startswith(("postgresql+psycopg://", "sqlite:///")):
+            raise ValueError("Use postgresql+psycopg:// or a local SQLite path")
+        if url.startswith("postgresql"):
+            return create_engine(url, future=True, pool_pre_ping=True, hide_parameters=True)
+        path = url.removeprefix("sqlite:///")
     db_path = Path(path) if path else default_database_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(f"sqlite:///{db_path}", future=True)
@@ -42,7 +49,8 @@ class Database:
 
     def create_schema(self) -> None:
         Base.metadata.create_all(self.engine)
-        self._create_fts()
+        if self.engine.dialect.name == "sqlite":
+            self._create_fts()
 
     def _create_fts(self) -> None:
         with self.engine.begin() as connection:
@@ -56,7 +64,8 @@ class Database:
     def transaction(self) -> Iterator[Session]:
         with self.sessions() as session:
             try:
-                session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+                if self.engine.dialect.name == "sqlite":
+                    session.connection().exec_driver_sql("BEGIN IMMEDIATE")
                 yield session
                 session.commit()
             except Exception:
